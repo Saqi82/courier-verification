@@ -1,4 +1,11 @@
+# Dependencies
 node_modules/
+
+# Environment variables
 .env
+
+# Upload directory
 uploads/*
+
+# But keep the uploads directory itself
 !uploads/.gitkeep
